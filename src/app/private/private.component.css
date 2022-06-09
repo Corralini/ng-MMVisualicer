@@ -1,0 +1,8 @@
+.info-card {
+    max-width: 510px;
+}
+
+a {
+    all: unset;
+    cursor: pointer;
+}

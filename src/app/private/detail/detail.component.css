@@ -1,0 +1,19 @@
+.w-15{
+    max-width: 15% !important;
+}
+
+.h-15{
+    max-height: 15% !important;
+}
+
+.mh-900{
+    max-height: 960px!important;
+}
+
+.mh-850{
+    max-height: 750px!important;
+}
+
+table {
+    width: 100%;
+}

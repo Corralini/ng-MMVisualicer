@@ -1,0 +1,161 @@
+<div *ngIf="data | async  as srvResp else elseBlock">
+    <div class="d-flex justify-content-end me-lg-5 mt-5">
+        <button (click)="loadData()" mat-fab color="primary" aria-label="Example icon button with a bookmark icon">
+            <mat-icon>refresh</mat-icon>
+        </button>
+    </div>
+    <p class="h1 text-center">{{hostName}}</p>
+    <mat-divider></mat-divider>
+    <div class="mt-lg-5" *ngIf="srvResp?._data[hostName] as allData">
+        <div class="row w-100 overflow-auto mh-900">
+            <div class="col-8 " *ngFor="let general of allData?.general | keyvalue">
+                <p class="h2 text-center">GENERAL OVERVIEW</p>
+                <p class="text-center">Last update: {{getDateParsed(general.key)}}</p>
+                <mat-divider></mat-divider>
+                <div *ngIf="getValue(allData?.general, general.key) as information">
+
+                    <div class="d-flex justify-content-around flex-wrap mt-4">
+                        <div class="text-center">
+                            <p>CPU Usage</p>
+                            <canvas baseChart
+                                    [data]="getCpuUsage(information?._cpu_usage)"
+                                    type="doughnut"
+                                    [legend]="true"
+                                    resp>
+                            </canvas>
+                        </div>
+
+                        <div class="text-center">
+                            <p>Memory Usage</p>
+                            <canvas baseChart
+                                    [data]="getPercUsage(information?._memory?._total, information?._memory?._used)"
+                                    type="doughnut"
+                                    [legend]="true">
+                            </canvas>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <p class="h2 text-center">DISK INFORMATION</p>
+                        <p class="text-center">Last update: {{getDateParsed(general.key)}}</p>
+                        <mat-divider></mat-divider>
+
+
+                        <div class="d-flex justify-content-around flex-wrap mt-4">
+                            <div *ngFor="let disk of information?._disks">
+                                <div class="text-center">
+                                    <p>{{disk?._name | uppercase}} ({{getGiB(disk?._total).toFixed(3)}}GiB)</p>
+                                    <canvas baseChart
+                                            [data]="getDiskValues(disk)"
+                                            type="doughnut"
+                                            [legend]="true">
+                                    </canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-4">
+                <div *ngFor="let general of allData?.services | keyvalue">
+                    <p class="h2 text-center">SERVICES</p>
+                    <p class="text-center">Last update: {{getDateParsed(general.key)}}</p>
+                    <mat-divider></mat-divider>
+                    <p class="d-flex justify-content-end">
+                        <mat-form-field appearance="legacy">
+                            <mat-label>Search</mat-label>
+                            <input [(ngModel)]="serviceSearch" matInput>
+                            <mat-icon matPrefix>search</mat-icon>
+                        </mat-form-field>
+                    </p>
+                    <div class="overflow-auto mh-850" *ngIf="getValue(allData?.services, general.key) as services">
+                        <div *ngFor="let service of searchServices(services)">
+                            <div class="d-flex justify-content-between mt-3">
+                                <div>{{service?._display_name}}</div>
+                                <div *ngIf="service?._status == 'running'">
+                                    <button class="me-2" mat-raised-button color="accent"
+                                            (click)="sendActionService(service?._name, 'restart')">Restart
+                                    </button>
+                                    <button mat-raised-button color="warn"
+                                            (click)="sendActionService(service?._name, 'stop')">Stop
+                                    </button>
+                                </div>
+                                <div *ngIf="service?._status != 'running'">
+                                    <button class="me-2" mat-raised-button color="primary"
+                                            (click)="sendActionService(service?._name, 'start')">Start
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-lg-5 w-100">3
+            <div *ngFor="let general of allData?.processes | keyvalue">
+                <p class="h2 text-center">PROCESSES</p>
+                <p class="text-center">Last update: {{getDateParsed(general.key)}}</p>
+                <mat-divider></mat-divider>
+                <p class="d-flex justify-content-end">
+                    <mat-form-field appearance="legacy">
+                        <mat-label>Search</mat-label>
+                        <input [(ngModel)]="processSearch" matInput>
+                        <mat-icon matPrefix>search</mat-icon>
+                    </mat-form-field>
+                </p>
+                <div class="overflow-auto mh-850" *ngIf="getValue(allData?.processes, general.key) as processes">
+                    <table mat-table [dataSource]="searchProcesses(processes)" class="mat-elevation-z8">
+
+                        <ng-container matColumnDef="_id">
+                            <th mat-header-cell *matHeaderCellDef> ID</th>
+                            <td mat-cell *matCellDef="let element"> {{element._id}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="_name">
+                            <th mat-header-cell *matHeaderCellDef> Name</th>
+                            <td mat-cell *matCellDef="let element"> {{element._name}} </td>
+                        </ng-container>
+                        <ng-container matColumnDef="_status">
+                            <th mat-header-cell *matHeaderCellDef> Status</th>
+                            <td mat-cell *matCellDef="let element"> {{element._status}} </td>
+                        </ng-container>
+
+                        <ng-container matColumnDef="_started_date">
+                            <th mat-header-cell *matHeaderCellDef> Started Date</th>
+                            <td mat-cell *matCellDef="let element"> {{element._started_date}} </td>
+                        </ng-container>
+
+                        <ng-container matColumnDef="buttons">
+                            <th mat-header-cell *matHeaderCellDef></th>
+                            <td mat-cell *matCellDef="let element">
+                                <button *ngIf="element._status == 'running'" class="me-2" mat-raised-button
+                                        color="warn" (click)="sendActionProcess(element?._id)">
+                                    Stop
+                                </button>
+                            </td>
+                        </ng-container>
+
+                        <tr mat-header-row
+                            *matHeaderRowDef="['_id', '_name', '_status', '_started_date', 'buttons']"></tr>
+                        <tr mat-row
+                            *matRowDef="let row; columns: ['_id', '_name', '_status', '_started_date', 'buttons'];"></tr>
+
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<ng-template #elseBlock>
+    <div class="d-flex justify-content-center align-items-center h-90">
+        <div class="">
+            <mat-spinner></mat-spinner>
+        </div>
+    </div>
+</ng-template>
